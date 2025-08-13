@@ -66,6 +66,58 @@ export class InitialDataSeed {
         category: 'permissions',
       },
 
+      // Agent permissions
+      {
+        name: 'agents.create',
+        description: 'Create agents',
+        category: 'agents',
+      },
+      { name: 'agents.read', description: 'Read agents', category: 'agents' },
+      {
+        name: 'agents.update',
+        description: 'Update agents',
+        category: 'agents',
+      },
+      {
+        name: 'agents.delete',
+        description: 'Delete agents',
+        category: 'agents',
+      },
+      {
+        name: 'agents.manage-users',
+        description: 'Manage users under agents',
+        category: 'agents',
+      },
+      {
+        name: 'agents.manage-hierarchy',
+        description: 'Manage agent hierarchy',
+        category: 'agents',
+      },
+
+      // Post permissions
+      { name: 'posts.create', description: 'Create posts', category: 'posts' },
+      { name: 'posts.read', description: 'Read posts', category: 'posts' },
+      {
+        name: 'posts.update',
+        description: 'Update own posts',
+        category: 'posts',
+      },
+      {
+        name: 'posts.delete',
+        description: 'Delete own posts',
+        category: 'posts',
+      },
+      {
+        name: 'posts.update-all',
+        description: 'Update all posts',
+        category: 'posts',
+      },
+      {
+        name: 'posts.delete-all',
+        description: 'Delete all posts',
+        category: 'posts',
+      },
+
       // System permissions
       {
         name: 'system.admin',
@@ -99,8 +151,27 @@ export class InitialDataSeed {
 
     // Create roles
     const adminPermissions = createdPermissions; // Admin gets all permissions
+
+    // Basic permissions for regular users
     const userPermissions = createdPermissions.filter(
-      (p) => p.name.includes('users.read') || p.name.includes('users.update'),
+      (p) =>
+        p.name === 'users.read' ||
+        p.name === 'users.update' ||
+        p.name === 'posts.create' ||
+        p.name === 'posts.read' ||
+        p.name === 'posts.update' ||
+        p.name === 'posts.delete',
+    );
+
+    // Agent permissions (includes user permissions + agent management)
+    const agentPermissions = createdPermissions.filter(
+      (p) =>
+        userPermissions.includes(p) ||
+        p.name === 'agents.read' ||
+        p.name === 'agents.update' ||
+        p.name === 'agents.manage-users' ||
+        p.name === 'users.create' ||
+        p.name === 'users.delete',
     );
 
     // Admin role
@@ -131,6 +202,21 @@ export class InitialDataSeed {
         permissions: userPermissions,
       });
       userRole = await roleRepository.save(userRole);
+    }
+
+    // Agent role
+    let agentRole = await roleRepository.findOne({
+      where: { name: 'agent' },
+      relations: ['permissions'],
+    });
+
+    if (!agentRole) {
+      agentRole = roleRepository.create({
+        name: 'agent',
+        description: 'Agent with user management capabilities',
+        permissions: agentPermissions,
+      });
+      agentRole = await roleRepository.save(agentRole);
     }
 
     // Create default admin user

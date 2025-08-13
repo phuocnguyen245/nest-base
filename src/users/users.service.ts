@@ -8,7 +8,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { User } from './entities/user.entity';
 import { Role } from '../auth/entities/role.entity';
-import { Permission } from '../auth/entities/permission.entity';
 import {
   CreateUserDto,
   UpdateUserDto,
@@ -28,8 +27,6 @@ export class UsersService extends BaseService<User> {
     private readonly usersRepository: Repository<User>,
     @InjectRepository(Role)
     private readonly rolesRepository: Repository<Role>,
-    @InjectRepository(Permission)
-    private readonly permissionsRepository: Repository<Permission>,
     private readonly logger: AppLoggerService,
   ) {
     super(usersRepository);
@@ -50,28 +47,18 @@ export class UsersService extends BaseService<User> {
       throw new ConflictException('User with this username already exists');
     }
 
-    // Find roles and permissions
     const roles = createUserDto.roleIds
       ? await this.rolesRepository.find({
           where: { id: In(createUserDto.roleIds) },
         })
       : [];
 
-    const permissions = createUserDto.permissionIds
-      ? await this.permissionsRepository.find({
-          where: { id: In(createUserDto.permissionIds) },
-        })
-      : [];
-
-    // Create user
     const userData = { ...createUserDto };
     delete userData.roleIds;
-    delete userData.permissionIds;
 
     const user = this.usersRepository.create({
       ...userData,
       roles,
-      permissions,
     });
 
     const savedUser = await this.usersRepository.save(user);
@@ -89,8 +76,6 @@ export class UsersService extends BaseService<User> {
       plainToClass(UserResponseDto, {
         ...user,
         roles: user.roles?.map((role) => role.name) || [],
-        permissions:
-          user.permissions?.map((permission) => permission.name) || [],
         fullName: user.fullName,
       }),
     );
@@ -104,7 +89,7 @@ export class UsersService extends BaseService<User> {
   async findOne(id: string): Promise<User> {
     const user = await this.usersRepository.findOne({
       where: { id },
-      relations: ['roles', 'permissions'],
+      relations: ['roles'],
     });
 
     if (!user) {
@@ -117,7 +102,7 @@ export class UsersService extends BaseService<User> {
   async findOneWithRelations(id: string): Promise<User> {
     const user = await this.usersRepository.findOne({
       where: { id },
-      relations: ['roles', 'permissions', 'roles.permissions'],
+      relations: ['roles', 'roles.permissions'],
     });
 
     if (!user) {
@@ -130,14 +115,14 @@ export class UsersService extends BaseService<User> {
   async findByEmail(email: string): Promise<User | null> {
     return this.usersRepository.findOne({
       where: { email },
-      relations: ['roles', 'permissions'],
+      relations: ['roles'],
     });
   }
 
   async findByUsername(username: string): Promise<User | null> {
     return this.usersRepository.findOne({
       where: { username },
-      relations: ['roles', 'permissions'],
+      relations: ['roles'],
     });
   }
 
@@ -168,18 +153,9 @@ export class UsersService extends BaseService<User> {
       user.roles = roles;
     }
 
-    // Update permissions if provided
-    if (updateUserDto.permissionIds) {
-      const permissions = await this.permissionsRepository.find({
-        where: { id: In(updateUserDto.permissionIds) },
-      });
-      user.permissions = permissions;
-    }
-
-    // Remove roleIds and permissionIds from update data
+    // Remove roleIds from update data
     const updateData = { ...updateUserDto };
     delete updateData.roleIds;
-    delete updateData.permissionIds;
 
     Object.assign(user, updateData);
 
@@ -231,7 +207,7 @@ export class UsersService extends BaseService<User> {
 
   async clearRefreshToken(userId: string): Promise<void> {
     await this.usersRepository.update(userId, {
-      refreshToken: undefined,
+      refreshToken: null,
     });
   }
 
@@ -242,13 +218,8 @@ export class UsersService extends BaseService<User> {
   }
 
   async storePasswordResetToken(userId: string, token: string): Promise<void> {
-    // You might want to create a separate table for reset tokens
-    // For now, store in user table with expiration
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 1); // 1 hour expiry
-
     await this.usersRepository.update(userId, {
-      refreshToken: `reset:${token}:${expiresAt.getTime()}`,
+      refreshToken: `reset:${token}`,
     });
   }
 
@@ -257,8 +228,13 @@ export class UsersService extends BaseService<User> {
 
     for (const user of users) {
       if (user.refreshToken?.startsWith('reset:')) {
-        const [, storedToken, expiryTime] = user.refreshToken.split(':');
-        if (storedToken === token && parseInt(expiryTime) > Date.now()) {
+        const [, storedTokenDB, expiryTimeDb] = user.refreshToken.split(':');
+        const [, storedToken, _] = token.split(':');
+
+        if (
+          storedTokenDB === storedToken &&
+          parseInt(expiryTimeDb) > Date.now()
+        ) {
           return user;
         }
       }
@@ -268,8 +244,10 @@ export class UsersService extends BaseService<User> {
   }
 
   async clearPasswordResetToken(userId: string): Promise<void> {
+    console.log(123123, userId);
+
     await this.usersRepository.update(userId, {
-      refreshToken: undefined,
+      refreshToken: null,
     });
   }
 
@@ -294,33 +272,6 @@ export class UsersService extends BaseService<User> {
   async removeRole(userId: string, roleId: string): Promise<User> {
     const user = await this.findOne(userId);
     user.roles = user.roles.filter((role) => role.id !== roleId);
-    await this.usersRepository.save(user);
-    return user;
-  }
-
-  async assignPermission(userId: string, permissionId: string): Promise<User> {
-    const [user, permission] = await Promise.all([
-      this.findOne(userId),
-      this.permissionsRepository.findOne({ where: { id: permissionId } }),
-    ]);
-
-    if (!permission) {
-      throw new NotFoundException('Permission not found');
-    }
-
-    if (!user.permissions.some((p) => p.id === permissionId)) {
-      user.permissions.push(permission);
-      await this.usersRepository.save(user);
-    }
-
-    return user;
-  }
-
-  async removePermission(userId: string, permissionId: string): Promise<User> {
-    const user = await this.findOne(userId);
-    user.permissions = user.permissions.filter(
-      (permission) => permission.id !== permissionId,
-    );
     await this.usersRepository.save(user);
     return user;
   }

@@ -46,7 +46,7 @@ export class UsersController {
       lastName: user.lastName,
       isActive: user.isActive,
       roles: user.roles?.map((role) => role.name) || [],
-      permissions: user.permissions?.map((permission) => permission.name) || [],
+
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
       lastLoginAt: user.lastLoginAt,
@@ -73,8 +73,7 @@ export class UsersController {
       lastName: userProfile.lastName,
       isActive: userProfile.isActive,
       roles: userProfile.roles?.map((role) => role.name) || [],
-      permissions:
-        userProfile.permissions?.map((permission) => permission.name) || [],
+
       createdAt: userProfile.createdAt,
       updatedAt: userProfile.updatedAt,
       lastLoginAt: userProfile.lastLoginAt,
@@ -95,7 +94,7 @@ export class UsersController {
       lastName: user.lastName,
       isActive: user.isActive,
       roles: user.roles?.map((role) => role.name) || [],
-      permissions: user.permissions?.map((permission) => permission.name) || [],
+
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
       lastLoginAt: user.lastLoginAt,
@@ -119,7 +118,7 @@ export class UsersController {
       lastName: user.lastName,
       isActive: user.isActive,
       roles: user.roles?.map((role) => role.name) || [],
-      permissions: user.permissions?.map((permission) => permission.name) || [],
+
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
       lastLoginAt: user.lastLoginAt,
@@ -162,7 +161,7 @@ export class UsersController {
       lastName: user.lastName,
       isActive: user.isActive,
       roles: user.roles?.map((role) => role.name) || [],
-      permissions: user.permissions?.map((permission) => permission.name) || [],
+
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
       lastLoginAt: user.lastLoginAt,
@@ -192,29 +191,5 @@ export class UsersController {
   ) {
     await this.usersService.removeRole(userId, roleId);
     return { message: 'Role removed successfully' };
-  }
-
-  @Post(':userId/permissions/:permissionId')
-  @HttpCode(HttpStatus.OK)
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
-  @Permissions('users.manage-permissions')
-  async assignPermission(
-    @Param('userId') userId: string,
-    @Param('permissionId') permissionId: string,
-  ) {
-    await this.usersService.assignPermission(userId, permissionId);
-    return { message: 'Permission assigned successfully' };
-  }
-
-  @Delete(':userId/permissions/:permissionId')
-  @HttpCode(HttpStatus.OK)
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
-  @Permissions('users.manage-permissions')
-  async removePermission(
-    @Param('userId') userId: string,
-    @Param('permissionId') permissionId: string,
-  ) {
-    await this.usersService.removePermission(userId, permissionId);
-    return { message: 'Permission removed successfully' };
   }
 }

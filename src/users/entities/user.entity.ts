@@ -3,16 +3,24 @@ import {
   Column,
   ManyToMany,
   OneToMany,
+  OneToOne,
+  ManyToOne,
   JoinTable,
+  JoinColumn,
   BeforeInsert,
   BeforeUpdate,
 } from 'typeorm';
 import { BaseEntity } from '../../common/entities/base.entity';
 import { Role } from '../../auth/entities/role.entity';
-import { Permission } from '../../auth/entities/permission.entity';
+import { Agent } from '../../agents/entities/agent.entity';
 import { Post, Comment } from '../../posts/entities/post.entity';
 import { Exclude } from 'class-transformer';
 import * as bcrypt from 'bcryptjs';
+
+export enum UserType {
+  AGENT = 'agent',
+  USER = 'user',
+}
 
 @Entity('users')
 export class User extends BaseEntity {
@@ -39,7 +47,17 @@ export class User extends BaseEntity {
   lastLoginAt?: Date;
 
   @Column({ nullable: true, type: 'text' })
-  refreshToken?: string;
+  refreshToken?: string | null;
+
+  @Column({
+    type: 'enum',
+    enum: UserType,
+    default: UserType.USER,
+  })
+  userType: UserType;
+
+  @Column({ nullable: true })
+  managingAgentId?: string;
 
   @ManyToMany(() => Role, (role) => role.users, {
     cascade: true,
@@ -52,16 +70,17 @@ export class User extends BaseEntity {
   })
   roles: Role[];
 
-  @ManyToMany(() => Permission, (permission) => permission.users, {
-    cascade: true,
-    eager: false,
+  // Agent relationship - if this user is an agent
+  @OneToOne(() => Agent, (agent) => agent.user, { nullable: true })
+  agent?: Agent;
+
+  // Managing agent - which agent manages this user
+  @ManyToOne(() => Agent, (agent) => agent.managedUsers, {
+    nullable: true,
+    onDelete: 'SET NULL',
   })
-  @JoinTable({
-    name: 'user_permissions',
-    joinColumn: { name: 'user_id', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'permission_id', referencedColumnName: 'id' },
-  })
-  permissions: Permission[];
+  @JoinColumn({ name: 'managingAgentId' })
+  managingAgent?: Agent;
 
   @BeforeInsert()
   @BeforeUpdate()

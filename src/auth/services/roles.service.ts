@@ -177,6 +177,13 @@ export class RolesService extends BaseService<Role> {
     return savedRole;
   }
 
+  async findByName(name: string): Promise<Role | null> {
+    return this.rolesRepository.findOne({
+      where: { name },
+      relations: ['permissions'],
+    });
+  }
+
   private transformToResponseDto(role: Role): RoleResponseDto {
     return plainToClass(RoleResponseDto, {
       id: role.id,
@@ -189,7 +196,6 @@ export class RolesService extends BaseService<Role> {
     });
   }
 
-  // Base service abstract methods implementation
   protected getEntityName(): string {
     return 'Role';
   }

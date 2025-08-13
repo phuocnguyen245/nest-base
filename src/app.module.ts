@@ -7,6 +7,7 @@ import { databaseConfig } from './config/database.config';
 import { loggerConfig } from './config/logger.config';
 import { PostsModule } from './posts/posts.module';
 import { UsersModule } from './users/users.module';
+import { AgentsModule } from './agents/agents.module';
 import { CommonModule } from './common/common.module';
 import { HealthModule } from './health/health.module';
 import { RedisModule } from './redis/redis.module';
@@ -31,6 +32,7 @@ import { RedisModule } from './redis/redis.module';
     AuthModule,
     UsersModule,
     PostsModule,
+    AgentsModule,
   ],
   controllers: [],
   providers: [],

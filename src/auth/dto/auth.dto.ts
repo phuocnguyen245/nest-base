@@ -81,7 +81,6 @@ export class ResetPasswordDto {
 
   @IsNotEmpty({ message: VALIDATION_MESSAGES.PASSWORD.IS_REQUIRED })
   @IsString({ message: VALIDATION_MESSAGES.PASSWORD.MUST_BE_STRING })
-  @Transform(({ value }: { value: string }) => value?.toLowerCase().trim())
   @MinLength(8, { message: VALIDATION_MESSAGES.PASSWORD.TOO_SHORT })
   @MaxLength(100, { message: VALIDATION_MESSAGES.PASSWORD.TOO_LONG })
   @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, {

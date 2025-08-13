@@ -39,12 +39,6 @@ export class UserResponseDto {
   @IsArray()
   @IsString({ each: true })
   roles?: string[];
-
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  permissions?: string[];
-
   createdAt: Date;
 
   updatedAt: Date;
@@ -103,11 +97,6 @@ export class CreateUserDto {
   @IsArray()
   @IsUUID('4', { each: true })
   roleIds?: string[];
-
-  @IsOptional()
-  @IsArray()
-  @IsUUID('4', { each: true })
-  permissionIds?: string[];
 }
 
 export class UpdateUserDto {
@@ -118,7 +107,6 @@ export class UpdateUserDto {
   lastName?: string;
   isActive?: boolean;
   roleIds?: string[];
-  permissionIds?: string[];
 
   @IsOptional()
   @IsString({ message: VALIDATION_MESSAGES.PASSWORD.MUST_BE_STRING })

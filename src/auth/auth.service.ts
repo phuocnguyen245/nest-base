@@ -17,6 +17,8 @@ import {
   RefreshTokenDto,
   RegisterDto,
 } from './dto/auth.dto';
+import { PermissionsService } from './services/permissions.service';
+import { RolesService } from './services/roles.service';
 
 @Injectable()
 export class AuthService {
@@ -26,6 +28,8 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly logger: AppLoggerService,
     private readonly cacheService: CacheService,
+    private readonly permissionService: PermissionsService,
+    private readonly rolesService: RolesService,
   ) {}
 
   async validateUser(
@@ -60,19 +64,23 @@ export class AuthService {
       throw new UnauthorizedException('Account is deactivated');
     }
 
-    // Update last login
     await this.usersService.updateLastLogin(user.id);
 
     return this.generateTokens(user);
   }
 
   async register(registerDto: RegisterDto): Promise<AuthResponseDto> {
+    const defaultRole = await this.rolesService.findByName('user');
+    if (!defaultRole) {
+      throw new BadRequestException(
+        'Default user role not found. Please run database seeding first.',
+      );
+    }
+
     const user = await this.usersService.create({
       ...registerDto,
-      roleIds: ['default-user-role-id'],
+      roleIds: [defaultRole.id],
     });
-
-    this.logger.log(`New user registered: ${user.username}`);
     return this.generateTokens(user);
   }
 
@@ -117,12 +125,9 @@ export class AuthService {
     );
 
     const roles = userWithRelations.roles.map((role) => role.name);
-    const permissions = [
-      ...userWithRelations.permissions.map((p) => p.name),
-      ...userWithRelations.roles.flatMap((role) =>
-        role.permissions.map((p) => p.name),
-      ),
-    ];
+    const permissions = userWithRelations.roles.flatMap((role) =>
+      role.permissions.map((p) => p.name),
+    );
 
     const payload: JwtPayload = {
       sub: user.id,
@@ -198,15 +203,19 @@ export class AuthService {
       throw new BadRequestException('User not found');
     }
 
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    // Store reset token with expiration (implement in UsersService)
+    let resetToken = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 1);
+    resetToken = resetToken + ':' + expiresAt.getTime();
     await this.usersService.storePasswordResetToken(user.id, resetToken);
 
     return resetToken;
   }
 
   async resetPassword(token: string, newPassword: string): Promise<void> {
-    const user = await this.usersService.findByPasswordResetToken(token);
+    const formatResetToken = `reset:${token}`;
+    const user =
+      await this.usersService.findByPasswordResetToken(formatResetToken);
     if (!user) {
       throw new BadRequestException('Invalid or expired reset token');
     }

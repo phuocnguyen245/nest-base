@@ -1,33 +1,29 @@
 import {
-  Controller,
-  Post,
   Body,
-  UseGuards,
+  Controller,
+  Get,
   HttpCode,
   HttpStatus,
-  Get,
+  Post,
+  UseGuards,
 } from '@nestjs/common';
 
 import { AuthenticatedUser } from 'src/types';
 import { AuthService } from '../auth.service';
 import { CurrentUser } from '../decorators/current-user.decorator';
 import {
-  LoginDto,
   AuthResponseDto,
-  RegisterDto,
-  RefreshTokenDto,
   ForgotPasswordDto,
+  LoginDto,
+  RefreshTokenDto,
+  RegisterDto,
   ResetPasswordDto,
 } from '../dto/auth.dto';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
-import { AppLoggerService } from 'src/common/services/logger.service';
 
 @Controller('auth')
 export class AuthController {
-  constructor(
-    private readonly authService: AuthService,
-    private readonly logger: AppLoggerService,
-  ) {}
+  constructor(private readonly authService: AuthService) {}
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
@@ -41,6 +37,7 @@ export class AuthController {
   }
 
   @Post('refresh')
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   async refresh(
     @Body() refreshTokenDto: RefreshTokenDto,
@@ -65,19 +62,20 @@ export class AuthController {
   }
 
   @Post('forgot-password')
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
     const resetToken = await this.authService.generatePasswordResetToken(
       forgotPasswordDto.email,
     );
-    // In a real application, send this token via email
     return {
       message: 'Password reset token generated',
-      resetToken, // Remove this in production
+      resetToken,
     };
   }
 
   @Post('reset-password')
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
     await this.authService.resetPassword(
